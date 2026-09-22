@@ -1,0 +1,8 @@
+.DS_Store
+*.bak
+*.bak.*
+
+# Design notes are kept locally but never published. They name private
+# repositories, machine hostnames, and which credentials exist and where —
+# a roadmap for anyone reading this public repo.
+docs/specs/

@@ -1,0 +1,95 @@
+# ~/.zshrc
+#
+# Contains no credentials by design. Anything secret belongs in
+# ~/.zshrc.local; anything machine-specific in ~/.zshrc.<shortname>.
+# Both are sourced at the end and neither is tracked in git.
+
+[[ -e ~/.profile ]] && emulate sh -c 'source ~/.profile'
+
+[ -f /etc/zshrc ] && . /etc/zshrc
+
+export BASH_SILENCE_DEPRECATION_WARNING=1
+
+# ----------------------------------------------------------- history -----
+
+HISTFILE="${HOME}/.zsh_history"
+HISTSIZE=20000
+SAVEHIST=50000
+setopt EXTENDED_HISTORY SHARE_HISTORY APPEND_HISTORY
+setopt HIST_EXPIRE_DUPS_FIRST HIST_IGNORE_DUPS HIST_FIND_NO_DUPS HIST_REDUCE_BLANKS
+setopt CORRECT CORRECT_ALL
+setopt autolist
+
+# ------------------------------------------------------------ prompt -----
+
+function elite {
+    case $TERM in
+        xterm*|rxvt*) local TITLEBAR=$'%{\033]0;%n@%m: %~\007%}' ;;
+        *)            local TITLEBAR='' ;;
+    esac
+    PROMPT="${TITLEBAR}"'%F{red}(%F{cyan}%n%F{black}@%F{cyan}%m%F{red})%F{cyan} %F{red}(%F{cyan}%!%F{black} / %F{cyan}%t%F{red})
+ %f %F{red}(%B%F{cyan}%~%f%b%F{red})%f %# '
+}
+elite
+
+# --------------------------------------------------------- tooling -------
+
+[ -f ~/.alias ] && source ~/.alias
+
+export NVM_DIR="${HOME}/.nvm"
+[ -s "${NVM_DIR}/nvm.sh" ] && source "${NVM_DIR}/nvm.sh"
+[ -f /opt/local/share/nvm/init-nvm.sh ] && source /opt/local/share/nvm/init-nvm.sh
+
+[ -f "${HOME}/.langflow/uv/env" ] && source "${HOME}/.langflow/uv/env"
+
+# Certificate bundle, resolved once rather than exported three times as the
+# previous config did.
+if command -v python3 >/dev/null 2>&1; then
+    _certifi="$(python3 -m certifi 2>/dev/null)"
+    if [ -n "$_certifi" ]; then
+        export SSL_CERT_FILE="$_certifi"
+        export REQUESTS_CA_BUNDLE="$_certifi"
+    fi
+    unset _certifi
+fi
+
+# --------------------------------------------------------- postgres ------
+
+export PG_COLOR=auto
+export PG_COLORS="error=01;31:warning=01;35:note=01;36:locus=01"
+
+# ------------------------------------------------------------- local AI --
+
+export MLX_MAX_OPS_PER_BUFFER=8
+export MLX_MAX_MB_PER_BUFFER=1000000
+
+export HF_HOME="${HOME}/.cache/huggingface"
+export HF_TOKEN_PATH="${HF_HOME}/token"
+export HF_HUB_DISABLE_TELEMETRY=1
+export TOKENIZERS_PARALLELISM=false
+
+export OLLAMA_REQUEST_TIMEOUT=600s
+export OLLAMA_KEEP_ALIVE=30m
+export OLLAMA_NUM_PARALLEL=4
+export OLLAMA_FLASH_ATTENTION=1
+export OLLAMA_MAX_QUEUE=512
+export OLLAMA_MAX_LOADED_MODELS=2
+
+# ------------------------------------------------------------- n8n -------
+
+export N8N_SECURE_COOKIE=false
+export N8N_PROTOCOL=https
+export N8N_LISTEN_ADDRESS=0.0.0.0
+export N8N_RUNNERS_ENABLED=true
+
+# ------------------------------------------------------- telemetry -------
+
+export DISABLE_TELEMETRY=1
+export DISABLE_ERROR_REPORTING=1
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
+# ---------------------------------------------------------- overrides ----
+# Credentials and per-machine settings. Neither file is tracked.
+
+[ -f "${HOME}/.zshrc.local" ] && source "${HOME}/.zshrc.local"
+[ -f "${HOME}/.zshrc.$(hostname -s)" ] && source "${HOME}/.zshrc.$(hostname -s)"

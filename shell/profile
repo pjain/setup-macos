@@ -1,0 +1,35 @@
+# ~/.profile — sh-compatible settings, sourced by .zshrc.
+#
+# Contains no credentials. Machine-local values and secrets belong in
+# ~/.zshrc.local, which is never committed.
+
+umask 2
+
+# Build PATH from entries that actually exist, so a missing tool leaves no
+# dead segment behind. Order: user, python.org framework, MacPorts,
+# Homebrew, LM Studio, system.
+_path_prepend() {
+    [ -d "$1" ] || return 0
+    case ":${PATH}:" in
+        *":$1:"*) ;;
+        *) PATH="$1:${PATH}" ;;
+    esac
+}
+
+_path_prepend "/usr/local/bin"
+_path_prepend "/opt/homebrew/bin"
+_path_prepend "/opt/local/bin"
+_path_prepend "/Library/Frameworks/Python.framework/Versions/3.14/bin"
+_path_prepend "${HOME}/.lmstudio/bin"
+_path_prepend "${HOME}/bin"
+export PATH
+
+export ARCHFLAGS='-arch arm64'
+export PAGER=more
+
+if [ -d "/Applications/Emacs.app" ]; then
+    EMACS_BIN="/Applications/Emacs.app/Contents/MacOS/Emacs -nw"
+    export EDITOR="$EMACS_BIN"
+    export VISUAL="$EMACS_BIN"
+    export CVSEDITOR="$EMACS_BIN"
+fi
