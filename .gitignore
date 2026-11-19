@@ -6,3 +6,7 @@
 # repositories, machine hostnames, and which credentials exist and where —
 # a roadmap for anyone reading this public repo.
 docs/specs/
+
+# Stray audit copies — committed baselines live under matrix/ with the
+# OS version in the name.
+prefs-audit.tsv

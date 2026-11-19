@@ -1,0 +1,68 @@
+timestamp	macos	domain	key	result	detail
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowExternalHardDrivesOnDesktop	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowHardDrivesOnDesktop	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowMountedServersOnDesktop	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowRemovableMediaOnDesktop	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	AppleShowAllFiles	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowStatusBar	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	ShowPathbar	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	FXEnableExtensionChangeWarning	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	NewWindowTarget	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	FXPreferredViewStyle	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	OpenWindowForNewRemovableDisk	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.finder	QLEnableTextSelection	pass	
+2026-11-19T00:48:40	27.2.1	NSGlobalDomain	AppleShowAllExtensions	pass	
+2026-11-19T00:48:40	27.2.1	NSGlobalDomain	com.apple.springing.enabled	pass	
+2026-11-19T00:48:40	27.2.1	NSGlobalDomain	com.apple.springing.delay	pass	
+2026-11-19T00:48:40	27.2.1	NSGlobalDomain	AppleShowScrollBars	pass	
+2026-11-19T00:48:40	27.2.1	NSGlobalDomain	NSDocumentSaveNewDocumentsToCloud	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.desktopservices	DSDontWriteNetworkStores	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.desktopservices	DSDontWriteUSBStores	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.frameworks.diskimages	auto-open-ro-root	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.frameworks.diskimages	auto-open-rw-root	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.dock	autohide	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.dock	showhidden	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.dock	show-recents	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.dock	autohide-delay	pass	
+2026-11-19T00:48:40	27.2.1	com.apple.dock	autohide-time-modifier	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.dock	expose-animation-duration	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.dock	expose-group-by-app	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.dock	mru-spaces	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.dock	wvous-br-corner	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.dock	wvous-br-modifier	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.driver.AppleBluetoothMultitouch.trackpad	Clicking	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.driver.AppleBluetoothMultitouch.trackpad	Dragging	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.AppleMultitouchTrackpad	Dragging	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	com.apple.mouse.tapBehavior	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	com.apple.mouse.tapBehavior	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	com.apple.trackpad.forceClick	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	com.apple.trackpad.scaling	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	com.apple.sound.beep.flash	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.controlcenter	Bluetooth	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.controlcenter	Sound	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.screensaver	askForPassword	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.screensaver	askForPasswordDelay	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.screencapture	location	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.screencapture	type	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.screencapture	disable-shadow	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	AppleFontSmoothing	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.windowserver	DisplayResolutionEnabled	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.iCal	Default duration in minutes for new event	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.iCal	TimeZone support enabled	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.print.PrintingPrefs	Quit When Finished	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	PMPrintingExpandedStateForPrint	pass	
+2026-11-19T00:48:41	27.2.1	NSGlobalDomain	PMPrintingExpandedStateForPrint2	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.SoftwareUpdate	ScheduleFrequency	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.SoftwareUpdate	AutomaticCheckEnabled	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.SoftwareUpdate	AutomaticDownload	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.SoftwareUpdate	ConfigDataInstall	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.SoftwareUpdate	CriticalUpdateInstall	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.commerce	AutoUpdate	pass	
+2026-11-19T00:48:41	27.2.1	/Library/Preferences/com.apple.commerce	AutoUpdateRestartRequired	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.terminal	StringEncodings	pass	
+2026-11-19T00:48:41	27.2.1	com.apple.Terminal	Default Window Settings	pass	
+2026-11-19T00:48:42	27.2.1	com.apple.Terminal	Startup Window Settings	pass	
+2026-11-19T00:48:42	27.2.1	com.apple.AdLib	allowApplePersonalizedAdvertising	pass	
+2026-11-19T00:48:42	27.2.1	com.apple.assistant.support	Dictation Enabled	pass	
+2026-11-19T00:48:46	27.2.1	com.apple.TV	automaticallyDeleteVideoAssetsAfterWatching	pass	
+2026-11-19T00:48:46	27.2.1	com.apple.finder	IconViewSettings:arrangeBy	pass	
