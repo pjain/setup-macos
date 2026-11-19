@@ -304,8 +304,18 @@ install_verified() {
         fi ;;
     esac
 
-    tmp="$(mktemp -d "${TMPDIR:-/tmp}/setup-macos.XXXXXX")" || {
+    # Downloads land under /tmp, NOT $TMPDIR:
+    #   - $TMPDIR ends with a slash, so naive joining produced .../T//dir,
+    #     and installer rejected the non-canonical path outright.
+    #   - $TMPDIR is a per-user sandboxed location; sudo installer reopens
+    #     the package as root, and on recent macOS a Terminal without Full
+    #     Disk Access cannot have files there read back by root — the
+    #     signature check (same process, same user) passed while installer
+    #     reported the path invalid a second later. /tmp is readable by
+    #     root unconditionally. pwd -P canonicalizes (/private/tmp/...).
+    tmp="$(mktemp -d /tmp/setup-macos.XXXXXX)" || {
         record_fail "$name" "could not create temp dir"; return 1; }
+    tmp="$(cd "$tmp" && pwd -P)"
     # shellcheck disable=SC2064
     trap "cleanup_workdir '$tmp'" RETURN
 
