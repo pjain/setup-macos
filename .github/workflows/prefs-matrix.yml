@@ -1,0 +1,57 @@
+# Preferences compatibility matrix.
+#
+# Apple renames and removes `defaults` keys without changelogs. Rather than
+# discovering that on a fresh Mac, apply prefs.tsv on Apple's own runners
+# weekly and upload the per-key audit (~/.local/state/setup-macos/
+# prefs-audit.tsv). Diffing audits between majors shows exactly which keys
+# died in which release; fill in max_macos in prefs.tsv for the dead ones
+# and they become clean version-filtered skips everywhere else.
+#
+# This only ever mutates an ephemeral runner's own preferences, so
+# continue-on-error is deliberate: a key dying on a new macOS is a datum to
+# collect, not a build failure.
+
+name: preferences compatibility matrix
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays; macOS majors land each autumn
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add new runner labels (macos-27, ...) as GitHub offers them.
+        # macos-latest may duplicate an explicit label on some weeks —
+        # a redundant artifact is cheap; a missing major is expensive.
+        os: [macos-15, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply prefs.tsv against the runner's clean defaults
+        run: ./defaults.sh --profile dev,ai,desktop
+        continue-on-error: true
+
+      - name: Print failures and real skips (excluding filtered entries)
+        run: |
+          awk -F'\t' 'NR==1 || ($5 != "pass" && $5 != "filtered" && $5 != "dry-run")' \
+            "${HOME}/.local/state/setup-macos/prefs-audit.tsv"
+
+      - name: Stage the audit for upload
+        if: always()
+        run: |
+          mkdir -p audit
+          cp "${HOME}/.local/state/setup-macos/prefs-audit.tsv" \
+             "audit/prefs-audit-$(sw_vers -productVersion).tsv"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prefs-audit-${{ matrix.os }}-run${{ github.run_number }}
+          path: audit/*.tsv

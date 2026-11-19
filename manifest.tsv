@@ -14,30 +14,43 @@
 # team_id   pinned Apple Developer Team ID, or "-" if not yet observed.
 #           "-" still requires notarization but cannot detect a vendor swap.
 #
+# The url column is either a pinned vendor URL or a source spec that
+# resolves to the newest release at run time (see lib/resolve.sh):
+#   github:<owner>/<repo>[|<regex>]     latest GitHub release asset, filtered
+#   release-template:<owner>/<repo>|<url with {version}>
+#   sparkle:<appcast url>               the app's own self-update feed
+#   cask:<name>                         Homebrew's continuously-updated cask
+#   page:<url with trailing />[|<regex>]  scrape a download/index page
+#   redirect:<url>                      follow to the final versioned URL
+# The regex filters installer *file names*. Discovered URLs are cached in
+# ~/.local/state/setup-macos/lock.tsv; every artifact, discovered or pinned,
+# still passes the notarization + Team-ID gate before it is installed.
+# Run ./update.sh --check to see installed-vs-latest drift across profiles.
+#
 # Every URL was confirmed to resolve. Do not add an unverified URL.
-Emacs	dev,ai,desktop	dmg	/Applications/Emacs.app	5BRAQAFB8B	https://emacsformacosx.com/emacs-builds/Emacs-30.1-universal.dmg
+Emacs	dev,ai,desktop	dmg	/Applications/Emacs.app	5BRAQAFB8B	page:https://emacsformacosx.com/emacs-builds/|^Emacs-[0-9][0-9.]*-universal\.dmg$
 Firefox	dev	dmg	/Applications/Firefox.app	43AQ936H96	https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US
 Google Chrome	dev,desktop	dmg	/Applications/Google Chrome.app	EQHXZ8M8AV	https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 Brave Browser	desktop	dmg	/Applications/Brave Browser.app	KL8N8XSYF4	https://laptop-updates.brave.com/latest/osxarm64
 Arduino IDE	dev	dmg	/Applications/Arduino IDE.app	7KT7ZWMCJT	https://downloads.arduino.cc/arduino-ide/arduino-ide_latest_macOS_arm64.dmg
 Inkscape	dev,desktop	manual	/Applications/Inkscape.app	SW3D6BB6A6	https://inkscape.org/release/
-GIMP	dev,desktop	dmg	/Applications/GIMP.app	T25BQ8HSJF	https://download.gimp.org/gimp/v3.2/macos/gimp-3.2.4-arm64.dmg
+GIMP	dev,desktop	dmg	/Applications/GIMP.app	T25BQ8HSJF	page:https://download.gimp.org/gimp/v3.2/macos/|^gimp-[0-9][0-9.]*-arm64\.dmg$
 Slack	dev,desktop	dmg	/Applications/Slack.app	BQR82RBBHL	https://slack.com/ssb/download-osx-universal
 Zoom	dev,desktop	pkg	/Applications/zoom.us.app	BJ4HAAB9B3	https://zoom.us/client/latest/zoomusInstallerFull.pkg?archType=arm64
 Python 3.14	dev	pkg	/Library/Frameworks/Python.framework/Versions/3.14	-	https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg
 Xcode	dev	mas	/Applications/Xcode.app	59GAB85EFG	497799835
-Postgres.app	dev	dmg	/Applications/Postgres.app	-	https://github.com/PostgresApp/PostgresApp/releases/download/v2.9.6/Postgres-2.9.6-18.dmg
+Postgres.app	dev	dmg	/Applications/Postgres.app	-	github:PostgresApp/PostgresApp|^Postgres-[0-9][0-9.]*(-[0-9]+){2,}\.dmg$
 Miniconda	dev	pkg	/opt/miniconda3	-	https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.pkg
 oMLX	ai	manual	/Applications/oMLX.app	PSK5Q5T46L	https://omlx.ai
 LM Studio	ai	dmg	/Applications/LM Studio.app	-	https://installers.lmstudio.ai/darwin/arm64/0.4.23-1/LM-Studio-0.4.23-1-arm64.dmg
 Tailscale	ai,desktop	pkg	/Applications/Tailscale.app	W5364U7YZB	https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg
 Claude	desktop	dmg	/Applications/Claude.app	Q6L2SF6YDW	https://storage.googleapis.com/osprey-downloads-c02f6a0d-347c-492b-a752-3e0651722e97/nest/Claude.dmg
 ChatGPT	desktop	dmg	/Applications/ChatGPT.app	2DC432GLL2	https://persistent.oaistatic.com/sidekick/public/ChatGPT.dmg
-Signal	desktop	dmg	/Applications/Signal.app	U68MSDN6DR	https://updates.signal.org/desktop/signal-desktop-mac-universal-8.26.0.dmg
+Signal	desktop	dmg	/Applications/Signal.app	U68MSDN6DR	release-template:signalapp/Signal-Desktop|https://updates.signal.org/desktop/signal-desktop-mac-universal-{version}.dmg
 WhatsApp	desktop	dmg	/Applications/WhatsApp.app	-	https://web.whatsapp.com/desktop/mac_native/release/?configuration=Release
 Notion	desktop	dmg	/Applications/Notion.app	LBQJ96FQ8D	https://www.notion.so/desktop/mac-universal/download
 Crouton	desktop	manual	/Applications/Crouton.app	4MQ7FRMKBM	https://www.crouton.app
-BambuStudio	desktop	dmg	/Applications/BambuStudio.app	T3UBR9Y3B2	https://github.com/bambulab/BambuStudio/releases/download/v02.08.02.61/Bambu_Studio_mac-v02.08.02.61-20260820225108.dmg
+BambuStudio	desktop	dmg	/Applications/BambuStudio.app	T3UBR9Y3B2	github:bambulab/BambuStudio|^Bambu_Studio_mac-.*\.dmg$
 Quicken	desktop	manual	/Applications/Quicken.app	MQ5W46QNFN	https://www.quicken.com/download
 Microsoft Word	desktop	pkg	/Applications/Microsoft Word.app	UBF8T346G9	https://go.microsoft.com/fwlink/?linkid=525134
 Microsoft Excel	desktop	pkg	/Applications/Microsoft Excel.app	UBF8T346G9	https://go.microsoft.com/fwlink/?linkid=525135

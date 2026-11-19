@@ -16,9 +16,10 @@ set -o pipefail
 # ---------------------------------------------------------------- paths ----
 
 SETUP_ROOT="${SETUP_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-STATE_DIR="${HOME}/.local/state/setup-macos"
+STATE_DIR="${SETUP_STATE_DIR:-${HOME}/.local/state/setup-macos}"
 STATE_FILE="${STATE_DIR}/state"
 LOG_FILE="${STATE_DIR}/run.log"
+MANIFEST="${MANIFEST:-${SETUP_ROOT}/manifest.tsv}"
 mkdir -p "$STATE_DIR"
 
 # --------------------------------------------------------------- output ----
@@ -402,6 +403,44 @@ install_verified() {
 }
 
 # =========================================================================
+# Versions
+#
+# Comparison is best-effort numeric (sort -V): it answers "is X newer than Y"
+# for dotted-numeric versions and honestly reports "unknown" for anything
+# else, rather than guessing. Unknown must never trigger an automated
+# upgrade — it is only ever reported to a human.
+# =========================================================================
+
+# version_newer <a> <b> — succeeds when a is strictly newer than b.
+# Also sets V_STATUS to newer|older|same|unknown for the caller to branch on.
+version_newer() {
+    local a="${1#v}" b="${2#v}" first
+    V_STATUS=unknown
+    [ -n "$a" ] && [ -n "$b" ] || return 1
+    if [ "$a" = "$b" ]; then V_STATUS=same; return 1; fi
+    case "$a" in *[!0-9.]*|'') return 1 ;; esac
+    case "$b" in *[!0-9.]*|'') return 1 ;; esac
+    first="$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -1)"
+    if [ "$first" = "$b" ]; then V_STATUS=newer; return 0
+    else V_STATUS=older; return 1; fi
+}
+
+# installed_version <dest> — CFBundleShortVersionString of an .app bundle,
+# falling back to CFBundleVersion; "unknown" when neither can be read.
+installed_version() {
+    local plist v
+    case "$1" in
+        *.app) plist="${1%/}/Contents/Info.plist" ;;
+        *)     plist="${1%/}/Contents/Info.plist" ;;
+    esac
+    [ -f "$plist" ] || { printf 'unknown'; return 1; }
+    v="$(plutil -extract CFBundleShortVersionString raw "$plist" 2>/dev/null)"
+    [ -n "$v" ] || v="$(plutil -extract CFBundleVersion raw "$plist" 2>/dev/null)"
+    [ -n "$v" ] || { printf 'unknown'; return 1; }
+    printf '%s' "$v"
+}
+
+# =========================================================================
 # Preferences
 #
 # Writes are verified by reading the value back rather than by probing for
@@ -432,6 +471,10 @@ defaults_write_verified() {
     got="$(${pfx[@]+"${pfx[@]}"} defaults ${hostarg[@]+"${hostarg[@]}"} read "$domain" "$key" 2>/dev/null)"
     case "$type" in
         -bool) case "$value" in true|TRUE|YES|yes|1) want=1 ;; *) want=0 ;; esac ;;
+        -array) # defaults read renders arrays as "(\n    4\n)" — strip the
+                # framing so it can be compared against the written value.
+                want="$(printf '%s' "$value" | tr -d '  \n(),')"
+                got="$(printf '%s' "$got" | tr -d '  \n(),')" ;;
         *)     want="$value" ;;
     esac
 
@@ -458,6 +501,10 @@ FW=/usr/libexec/ApplicationFirewall/socketfilterfw
 
 fw_allow() {
     local path="$1" label="${2:-$(basename "$1")}"
+    if [ "${SETUP_DRY_RUN:-0}" = "1" ]; then
+        record_skip "firewall allow ${label}" "dry run — would add rule"
+        return 0
+    fi
     if [ ! -e "$path" ]; then
         record_skip "firewall allow ${label}" "not installed"
         return 1
@@ -479,6 +526,7 @@ fw_allow() {
 # =========================================================================
 
 KNOWN_PROFILES="dev ai desktop"
+PROFILE_FILE="${STATE_DIR}/profiles"
 
 profile_matches() {
     local entry="$1" selected="$2" p
@@ -501,4 +549,42 @@ validate_profiles() {
         esac
     done
     [ "$bad" -eq 0 ] || { err "valid profiles: ${KNOWN_PROFILES}"; return 1; }
+}
+
+# list_profiles — human-readable inventory of the manifest, per profile.
+list_profiles() {
+    local p
+    for p in $KNOWN_PROFILES; do
+        printf '\n%s%s%s\n' "$_B" "$p" "$_0"
+        awk -F'\t' -v want="$p" '
+            !/^#/ && NF {
+                split($2, a, ",")
+                for (i in a) if (a[i] == want) { printf "  %s\n", $1; break }
+            }' "$MANIFEST"
+    done
+}
+
+# resolve_profiles <current-selection> — echoes the effective selection.
+# Order of precedence: an explicit argument (--profile), $SETUP_PROFILES, a
+# previous saved choice, then an interactive prompt. Non-interactive runs
+# with no prior choice fail rather than guessing at what a machine is for.
+resolve_profiles() {
+    local selected="${1:-}" p
+    [ -n "$selected" ] && { printf '%s' "$selected"; return 0; }
+    if [ -n "${SETUP_PROFILES:-}" ]; then printf '%s' "$SETUP_PROFILES"; return 0; fi
+    if [ -s "$PROFILE_FILE" ]; then
+        info "using saved profiles: $(cat "$PROFILE_FILE")"
+        cat "$PROFILE_FILE"
+        return 0
+    fi
+    if [ ! -t 0 ]; then
+        err "no profile selected and stdin is not a terminal"
+        err "pass --profile ${KNOWN_PROFILES// /,} or set SETUP_PROFILES"
+        return 1
+    fi
+    printf '\nAvailable profiles: %s\n' "$KNOWN_PROFILES" >&2
+    printf 'Select one or more, comma-separated: ' >&2
+    read -r p
+    [ -n "$p" ] || { err "no profile selected"; return 1; }
+    printf '%s' "$p"
 }

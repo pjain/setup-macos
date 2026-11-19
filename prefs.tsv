@@ -1,0 +1,110 @@
+# setup-macos preferences manifest
+#
+# domain<TAB>key<TAB>type<TAB>value<TAB>profiles<TAB>min_macos<TAB>max_macos<TAB>host<TAB>note
+#
+# domain    defaults domain; a leading / makes it system-wide (written via sudo)
+# type      -bool | -string | -int | -float | -array (defaults write syntax)
+# profiles  comma-separated: dev, ai, desktop ("all" is not special — list them)
+# min_macos / max_macos
+#           major-version gating ("-" = open-ended). When Apple renames or
+#           kills a key, fill in max_macos with the last release that still
+#           honors it — the entry then reports as a version-filtered skip on
+#           newer systems instead of a spurious read-back mismatch. The audit
+#           file (~/.local/state/setup-macos/prefs-audit.tsv) is what tells
+#           you which keys to gate: compare audits across macOS releases.
+# host      "-" for the per-user domain, "currentHost" for -currentHost writes
+# note      free text, ignored by the engine
+#
+# Value tokens: {HOME} and {SCREENSHOTS_DIR} are expanded at write time.
+# {SCREENSHOTS_DIR} comes from SETUP_SCREENSHOT_DIR (config file or env),
+# defaulting to ~/Desktop — same for SETUP_TIMEZONE, consumed by the time
+# action in defaults.sh. Nothing machine-specific is hardcoded here.
+#
+# Every write is verified by read-back (see lib/common.sh); result per key
+# is appended to the audit file for CI matrices. Keys that need more than a
+# single defaults write (FDA-gated domains, PlistBuddy paths, systemsetup)
+# are actions in defaults.sh and audit-report themselves as plain text.
+
+# ------------------------------------------------------------- Finder -----
+com.apple.finder	ShowExternalHardDrivesOnDesktop	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	ShowHardDrivesOnDesktop	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	ShowMountedServersOnDesktop	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	ShowRemovableMediaOnDesktop	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	AppleShowAllFiles	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	ShowStatusBar	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	ShowPathbar	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	FXEnableExtensionChangeWarning	-bool	false	dev,ai,desktop	-	-	-
+com.apple.finder	NewWindowTarget	-string	PfHm	dev,ai,desktop	-	-	-
+com.apple.finder	FXPreferredViewStyle	-string	Nlsv	dev,ai,desktop	-	-	-
+com.apple.finder	OpenWindowForNewRemovableDisk	-bool	true	dev,ai,desktop	-	-	-
+com.apple.finder	QLEnableTextSelection	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	AppleShowAllExtensions	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.springing.enabled	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.springing.delay	-float	0.5	dev,ai,desktop	-	-	-
+NSGlobalDomain	AppleShowScrollBars	-string	Always	dev,ai,desktop	-	-	-
+NSGlobalDomain	NSDocumentSaveNewDocumentsToCloud	-bool	false	dev,ai,desktop	-	-	-
+com.apple.desktopservices	DSDontWriteNetworkStores	-bool	true	dev,ai,desktop	-	-	-
+com.apple.desktopservices	DSDontWriteUSBStores	-bool	true	dev,ai,desktop	-	-	-
+com.apple.frameworks.diskimages	auto-open-ro-root	-bool	true	dev,ai,desktop	-	-	-
+com.apple.frameworks.diskimages	auto-open-rw-root	-bool	true	dev,ai,desktop	-	-	-
+
+# --------------------------------------------------- Dock and hot corners -
+com.apple.dock	autohide	-bool	true	dev,ai,desktop	-	-	-
+com.apple.dock	showhidden	-bool	true	dev,ai,desktop	-	-	-
+com.apple.dock	show-recents	-bool	true	dev,ai,desktop	-	-	-
+com.apple.dock	autohide-delay	-float	0	dev,ai,desktop	-	-	-
+com.apple.dock	autohide-time-modifier	-float	0.2	dev,ai,desktop	-	-	-
+com.apple.dock	expose-animation-duration	-float	0.1	dev,ai,desktop	-	-	-
+com.apple.dock	expose-group-by-app	-bool	true	dev,ai,desktop	-	-	-
+com.apple.dock	mru-spaces	-bool	false	dev,ai,desktop	-	-	-
+com.apple.dock	wvous-br-corner	-int	10	dev,ai,desktop	-	-	-	old script set this twice (5 then 10); 10 = display sleep, kept deliberately
+com.apple.dock	wvous-br-modifier	-int	0	dev,ai,desktop	-	-	-
+
+# ------------------------------------------------- trackpad and keyboard --
+com.apple.driver.AppleBluetoothMultitouch.trackpad	Clicking	-bool	true	dev,ai,desktop	-	-	-
+com.apple.driver.AppleBluetoothMultitouch.trackpad	Dragging	-bool	false	dev,ai,desktop	-	-	-
+com.apple.AppleMultitouchTrackpad	Dragging	-bool	false	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.mouse.tapBehavior	-int	1	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.mouse.tapBehavior	-int	1	dev,ai,desktop	-	-	currentHost
+NSGlobalDomain	com.apple.trackpad.forceClick	-int	1	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.trackpad.scaling	-float	0.875	dev,ai,desktop	-	-	-
+NSGlobalDomain	com.apple.sound.beep.flash	-int	0	dev,ai,desktop	-	-	-
+
+# ------------------------------------------------------------- menu bar ---
+com.apple.controlcenter	Bluetooth	-int	18	dev,ai,desktop	-	-	currentHost
+com.apple.controlcenter	Sound	-int	18	dev,ai,desktop	-	-	currentHost
+
+# ---------------------------------------------------------- screen --------
+com.apple.screensaver	askForPassword	-int	1	dev,ai,desktop	-	-	-
+com.apple.screensaver	askForPasswordDelay	-int	0	dev,ai,desktop	-	-	-
+com.apple.screencapture	location	-string	{SCREENSHOTS_DIR}	dev,ai,desktop	-	-	-
+com.apple.screencapture	type	-string	png	dev,ai,desktop	-	-	-
+com.apple.screencapture	disable-shadow	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	AppleFontSmoothing	-int	2	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.windowserver	DisplayResolutionEnabled	-bool	true	dev,ai,desktop	-	-	-	system-wide; may itself want a version gate someday
+
+# ------------------------------------------------- time and calendar ------
+com.apple.iCal	Default duration in minutes for new event	-int	30	dev,ai,desktop	-	-	-
+com.apple.iCal	TimeZone support enabled	-int	1	dev,ai,desktop	-	-	-
+
+# ------------------------------------------------------------ printing ----
+com.apple.print.PrintingPrefs	Quit When Finished	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	PMPrintingExpandedStateForPrint	-bool	true	dev,ai,desktop	-	-	-
+NSGlobalDomain	PMPrintingExpandedStateForPrint2	-bool	true	dev,ai,desktop	-	-	-
+
+# ------------------------------------------------------ software updates --
+com.apple.SoftwareUpdate	ScheduleFrequency	-int	1	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.SoftwareUpdate	AutomaticCheckEnabled	-bool	true	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.SoftwareUpdate	AutomaticDownload	-bool	true	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.SoftwareUpdate	ConfigDataInstall	-bool	true	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.SoftwareUpdate	CriticalUpdateInstall	-bool	true	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.commerce	AutoUpdate	-bool	true	dev,ai,desktop	-	-	-
+/Library/Preferences/com.apple.commerce	AutoUpdateRestartRequired	-bool	true	dev,ai,desktop	-	-	-
+
+# --------------------------------------------------------------- misc -----
+com.apple.terminal	StringEncodings	-array	4	dev,ai,desktop	-	-	-
+com.apple.Terminal	Default Window Settings	-string	Ocean	dev,ai,desktop	-	-	-
+com.apple.Terminal	Startup Window Settings	-string	Ocean	dev,ai,desktop	-	-	-
+com.apple.AdLib	allowApplePersonalizedAdvertising	-int	0	dev,ai,desktop	-	-	-
+com.apple.assistant.support	Dictation Enabled	-int	1	dev,ai,desktop	-	-	-
+com.apple.TV	automaticallyDeleteVideoAssetsAfterWatching	-int	1	dev,ai,desktop	-	-	-

@@ -231,13 +231,11 @@ main() {
     done
 
     # The profile choice must survive a reboot, since the resume agent
-    # re-invokes this script with no arguments.
-    if [ -n "$PROFILES" ]; then
-        validate_profiles "$PROFILES" || exit 1
-        printf '%s' "$PROFILES" > "${STATE_DIR}/profiles"
-    elif [ -s "${STATE_DIR}/profiles" ]; then
-        PROFILES="$(cat "${STATE_DIR}/profiles")"
-    fi
+    # re-invokes this script with no arguments. Resolving it once here means
+    # every phase — defaults included — sees the same selection.
+    PROFILES="$(resolve_profiles "$PROFILES")" || exit 1
+    validate_profiles "$PROFILES" || exit 1
+    printf '%s' "$PROFILES" > "${STATE_DIR}/profiles"
 
     info "setup-macos on macOS $(macos_full)"
     check_macos_version || exit 1

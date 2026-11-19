@@ -48,8 +48,11 @@ would be downloaded, and writes nothing.
     ./bootstrap.sh --status        list completed phases
     ./bootstrap.sh --reset         clear state and start over
     ./defaults.sh                  system preferences only
+    ./defaults.sh --profile dev    ...for specific profiles
     ./install.sh                   applications only
     SETUP_DRY_RUN=1 ./install.sh   report, change nothing
+    ./update.sh --check            installed vs latest, change nothing
+    ./update.sh                    upgrade anything outdated (verified)
 
 Each script prints a summary and exits non-zero if anything failed. The full
 log is at `~/.local/state/setup-macos/run.log`.
@@ -146,7 +149,7 @@ after a reboot, so an interrupted run resumes instead of restarting.
 | Phase      | Does                                                    |
 |------------|---------------------------------------------------------|
 | `clt`      | Xcode Command Line Tools, headless where possible        |
-| `defaults` | System preferences (`defaults.sh`)                       |
+| `defaults` | System preferences from `prefs.tsv` (`defaults.sh`)      |
 | `install`  | Applications from `manifest.tsv` (`install.sh`)          |
 | `shell`    | Links `shell/zshrc` and `shell/profile` into `$HOME`     |
 | `github`   | `gh` sign-in, SSH keygen, key uploaded via `gh ssh-key`  |
@@ -170,6 +173,65 @@ Entries pinned to `-` have no Team ID recorded yet. They still require
 notarization, but cannot detect a vendor swap; `install.sh` prints the
 observed ID so it can be pinned. Adding software is one line in
 `manifest.tsv`, not a block of shell.
+
+## Finding the newest version: sources and updates
+
+The url column of `manifest.tsv` does not have to be a fixed URL. A
+*source spec* names where to discover the newest release, resolved at run
+time (implemented in `lib/resolve.sh`):
+
+    github:<owner>/<repo>|<regex>     latest release asset, filtered by name
+    release-template:<owner>/<repo>|https://…{version}…
+    sparkle:<appcast url>             the app's own self-update feed
+    cask:<name>                       Homebrew's continuously-updated pointer
+    page:<index or download url with trailing />|<regex>
+    redirect:<latest url>             follow to the final versioned URL
+
+Resolution results are cached for 24 hours in
+`~/.local/state/setup-macos/lock.tsv` (name, spec, version, URL; a changed
+spec re-resolves). Discovery only ever picks a *URL*: what gets installed is
+still decided by the notarization + pinned-Team-ID gate above, so a vendor
+swap or a poisoned page scrape fails verification exactly as it would with a
+hand-pinned URL. Entries whose vendor gives no scriptable version source
+stay pinned URLs and are flagged by the update check instead.
+
+    ./update.sh --check        report installed vs latest per profile
+    ./update.sh                download, verify, replace; restore the old
+                               version if verification fails
+
+`update.sh` bypasses the cache and re-resolves every entry. Version
+comparison is numeric-only; anything unparseable (`7.2.1 (88329)`) or any
+vendor URL with no version in it is reported to a human rather than
+auto-upgraded. App Store titles (`mas upgrade`) and npm/pip packages are
+pointed at their native updaters rather than duplicated here.
+
+## Preferences are data too
+
+`defaults.sh` is an engine; `prefs.tsv` is the inventory. Each line is one
+preference: domain, key, type, value, profiles, and the macOS major versions
+the key is known to work on:
+
+    com.apple.dock  mru-spaces  -bool  false  dev,ai,desktop  -  -
+
+Adding a setting is one line. Retiring one that Apple killed in some release
+means filling in its `max_macos`, after which it reports as a clean
+version-filtered skip on newer systems instead of noise. Values support
+`{HOME}` and `{SCREENSHOTS_DIR}` tokens; machine-specific values come from
+`~/.config/setup-macos/config` (`SETUP_TIMEZONE`, `SETUP_SCREENSHOT_DIR`)
+rather than edits to the data. Dock, Finder and friends respect the profile
+selection like software does — a headless `ai` host can be given only the
+entries that apply to it.
+
+What cannot be expressed as one key/value write (PlistBuddy paths,
+`systemsetup`, the firewall, Touch ID sudo) stays as actions in
+`defaults.sh`, and reports itself the same way.
+
+Every entry's outcome — pass, skip, fail, filtered — is appended to
+`~/.local/state/setup-macos/prefs-audit.tsv`. That file is the
+compatibility matrix: `.github/workflows/prefs-matrix.yml` runs the engine
+on Apple's GitHub runners weekly and uploads one audit per macOS release,
+so a new major version tells you exactly which keys died before a fresh Mac
+ever has to find out.
 
 ## Credentials
 

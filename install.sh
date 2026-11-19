@@ -7,9 +7,9 @@ set -uo pipefail
 SETUP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SETUP_ROOT}/lib/common.sh"
+# shellcheck source=lib/resolve.sh
+source "${SETUP_ROOT}/lib/resolve.sh"
 
-MANIFEST="${SETUP_ROOT}/manifest.tsv"
-PROFILE_FILE="${STATE_DIR}/profiles"
 PROFILES=""
 
 # ------------------------------------------------------------ profiles ----
@@ -27,44 +27,10 @@ resumes install the same set. SETUP_PROFILES=... works as an alternative.
 USAGE
 }
 
-list_profiles() {
-    local p
-    for p in $KNOWN_PROFILES; do
-        printf '\n%s%s%s\n' "$_B" "$p" "$_0"
-        awk -F'\t' -v want="$p" '
-            !/^#/ && NF {
-                split($2, a, ",")
-                for (i in a) if (a[i] == want) { printf "  %s\n", $1; break }
-            }' "$MANIFEST"
-    done
-}
-
-# Order of precedence: --profile, $SETUP_PROFILES, a previous saved choice,
-# then an interactive prompt. Non-interactive runs with no prior choice fail
-# rather than guessing at what a machine is for.
-resolve_profiles() {
-    [ -n "$PROFILES" ] && return 0
-    if [ -n "${SETUP_PROFILES:-}" ]; then PROFILES="$SETUP_PROFILES"; return 0; fi
-    if [ -s "$PROFILE_FILE" ]; then
-        PROFILES="$(cat "$PROFILE_FILE")"
-        info "using saved profiles: ${PROFILES}"
-        return 0
-    fi
-    if [ ! -t 0 ]; then
-        err "no profile selected and stdin is not a terminal"
-        err "pass --profile ${KNOWN_PROFILES// /,} or set SETUP_PROFILES"
-        return 1
-    fi
-    printf '\nAvailable profiles: %s\n' "$KNOWN_PROFILES" >&2
-    printf 'Select one or more, comma-separated: ' >&2
-    read -r PROFILES
-    [ -n "$PROFILES" ] || { err "no profile selected"; return 1; }
-}
-
 # ------------------------------------------------------------ manifest ----
 
 install_from_manifest() {
-    local name profiles method dest team url selected=0
+    local name profiles method dest team url resolved selected=0
     [ -f "$MANIFEST" ] || { record_fail "manifest" "not found at ${MANIFEST}"; return 1; }
 
     while IFS=$'\t' read -r name profiles method dest team url; do
@@ -77,6 +43,23 @@ install_from_manifest() {
         # npm and mas entries need Node and mas respectively, both of which
         # are set up after this pass.
         case "$method" in npm|mas) continue ;; esac
+
+        # Resolve a source spec (github:, page:, ...) to a concrete URL.
+        # Pinned http URLs and non-download methods pass straight through.
+        case "$method" in dmg|dmgpkg|zip|pkg)
+            case "$url" in
+            http://*|https://*) : ;;
+            *)
+                if resolved="$(resolve_entry "$name" "$url")"; then
+                    _log "RESOLVE $name ${resolved%%$'\t'*} $(printf '%s' "${resolved#*$'\t'}" | head -c 100)"
+                    url="${resolved#*$'\t'}"
+                else
+                    record_fail "$name" "could not resolve source: ${url%%|*}"
+                    continue
+                fi ;;
+            esac ;;
+        esac
+
         install_verified "$name" "$method" "$dest" "$team" "$url"
     done < "$MANIFEST"
 
@@ -92,6 +75,10 @@ install_from_manifest() {
 configure_omlx() {
     local cfg="${HOME}/.omlx/settings.json" host port
 
+    if [ "${SETUP_DRY_RUN:-0}" = "1" ]; then
+        record_skip "oMLX server config" "dry run — would patch settings.json if present"
+        return 0
+    fi
     if [ ! -f "$cfg" ]; then
         record_skip "oMLX server config" "settings.json does not exist yet"
         record_note "oMLX: launch it once to create ~/.omlx/settings.json, then re-run install.sh"
@@ -228,6 +215,15 @@ install_node() {
 add_to_dock() {
     local app="$1"
     [ -d "$app" ] || return 0
+    if [ "${SETUP_DRY_RUN:-0}" = "1" ]; then
+        record_skip "dock pin $(basename "$app")" "dry run"
+        return 0
+    fi
+    # Idempotency: defaults write -array-add appends on every run, so without
+    # this check repeated runs pile up duplicate tiles.
+    if defaults read com.apple.dock persistent-apps 2>/dev/null | grep -qF "$app"; then
+        return 0
+    fi
     defaults write com.apple.dock persistent-apps -array-add \
         "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>${app}</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>" 2>/dev/null
 }
@@ -270,7 +266,7 @@ main() {
 
     info "setup-macos — install (macOS $(macos_full))"
     check_macos_version || exit 1
-    resolve_profiles || exit 1
+    PROFILES="$(resolve_profiles "$PROFILES")" || exit 1
     validate_profiles "$PROFILES" || exit 1
     printf '%s' "$PROFILES" > "$PROFILE_FILE"
     # A dry run installs nothing, so it must not demand a password. This also
@@ -304,7 +300,7 @@ main() {
     for a in /Applications/Emacs.app /Applications/Firefox.app "/Applications/Brave Browser.app"; do
         add_to_dock "$a"
     done
-    killall Dock 2>/dev/null
+    [ "${SETUP_DRY_RUN:-0}" = "1" ] || killall Dock 2>/dev/null
 
     print_summary
 }
