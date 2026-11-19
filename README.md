@@ -117,11 +117,14 @@ cannot sign in on your behalf. The run reports this rather than failing.
 Worth doing before running against a machine you care about. UTM with the
 Apple backend works well.
 
-Share this directory into the guest (UTM → Edit → Sharing → VirtioFS), then
-inside the VM:
+Share this directory into the guest (VM settings → Sharing → Add the folder;
+requires a macOS 13+ guest, and it then appears under `/Volumes/` inside),
+or skip sharing and let bootstrap fetch the repo from GitHub itself.
+Either way, inside the VM:
 
-    cp -R "/Volumes/My Shared Files/setup-macos" ~/projects/
-    cd ~/projects/setup-macos && ./bootstrap.sh
+    curl -fsSL https://raw.githubusercontent.com/pjain/setup-macos/main/bootstrap.sh | bash -s -- --profile dev
+    # ...or, with the folder shared:
+    cp -R "/Volumes/<shared folder>" ~/projects/setup-macos && cd ~/projects/setup-macos && ./bootstrap.sh
 
 The Apple backend has no snapshots, so clone the VM bundle between runs
 instead. On APFS this is copy-on-write and costs no extra space until the
