@@ -14,6 +14,7 @@
 
 set -uo pipefail
 SETUP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_LABEL="$(basename "$0" .sh)"
 # shellcheck source=lib/common.sh
 source "${SETUP_ROOT}/lib/common.sh"
 
@@ -231,6 +232,7 @@ main() {
         case "$1" in
             --profile|--profiles)     PROFILES="${2:-}"; shift 2 ;;
             --profile=*|--profiles=*) PROFILES="${1#*=}"; shift ;;
+            --yes|-y)                 export SETUP_UNATTENDED=1; shift ;;
             --help|-h)                usage; exit 0 ;;
             *) err "unknown option: $1"; usage; exit 1 ;;
         esac

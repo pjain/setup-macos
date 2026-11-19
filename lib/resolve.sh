@@ -103,9 +103,12 @@ _resolve_github() { # $1=owner/repo $2=asset-name ERE — prints ver<TAB>url
         warn "github:${repo}: API request failed (rate-limited? offline?)"
         return 1; }
     json="$(printf '%s' "$json" | tr '{' '\n')"
-    tag="$(printf '%s\n' "$json" | sed -n 's/.*"tag_name":"\([^"]*\)".*/\1/p' | head -1)"
+    # ": *" tolerates both compact and pretty-printed API responses —
+    # GitHub serves either, and a parser that only handles one silently
+    # reports "no matching asset" against the other.
+    tag="$(printf '%s\n' "$json" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)"
     url="$(printf '%s\n' "$json" \
-        | sed -n 's/.*"browser_download_url":"\([^"]*\)".*/\1/p' \
+        | sed -n 's/.*"browser_download_url": *"\([^"]*\)".*/\1/p' \
         | _resolve_filter "$re" | _resolve_prefer)"
     if [ -z "$url" ]; then
         warn "github:${repo}: no release asset matches '${re:-any}'"
@@ -119,7 +122,7 @@ _resolve_release_template() { # $1=owner/repo $2=url template with {version}
     json="$(_resolve_get "https://api.github.com/repos/${repo}/releases/latest")" || {
         warn "release-template:${repo}: API request failed"; return 1; }
     tag="$(printf '%s' "$json" | tr ',' '\n' \
-        | sed -n 's/^"tag_name":"\([^"]*\)".*/\1/p' | head -1)"
+        | sed -n 's/^ *"tag_name": *"\([^"]*\)".*/\1/p' | head -1)"
     if [ -z "$tag" ]; then
         warn "release-template:${repo}: no tag_name in API response"
         return 1

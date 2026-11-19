@@ -6,6 +6,10 @@
 # method    dmg    = disk image containing an .app
 #           dmgpkg = disk image containing an installer package
 #           pkg    = installer package
+#           upkg   = vendor-official but Apple-UNSIGNED installer package.
+#                    No notarization/Team-ID gate is possible; integrity is
+#                    TLS to the vendor release URL only (same class as
+#                    npm/pip/nvm). Reported loudly on every install.
 #           mas    = Mac App Store (url field holds the app ID; needs `mas`)
 #           npm    = global npm package (url field holds the package name)
 #           pip    = pip package (url field holds the package name)
@@ -63,3 +67,4 @@ Google Drive	desktop	dmgpkg	/Applications/Google Drive.app	EQHXZ8M8AV	https://dl
 Ledger Wallet	desktop	manual	/Applications/Ledger Wallet.app	X6LFS5BQKN	https://www.ledger.com/ledger-live
 n8n	dev,ai	npm	n8n	-	n8n
 certifi	dev	pip	certifi	-	certifi
+GitHub CLI	dev,ai,desktop	upkg	/usr/local/bin/gh	-	github:cli/cli|^gh_[0-9.]+_macOS_universal\.pkg$

@@ -51,7 +51,43 @@ record_skip() { SKIP+=("$1${2:+ — $2}"); printf '%sskip%s %s\n' "$_Y" "$_0" "$
 record_fail() { FAIL+=("$1${2:+ — $2}"); err "$1${2:+ — $2}"; }
 record_note() { NOTE+=("$1"); _log "NOTE  $1"; }
 
+# ------------------------------------------------------ machine summary ----
+# Unattended runs need a consumable outcome, not ANSI art. Every entry
+# point therefore also writes ${STATE_DIR}/summary.json — counts plus the
+# full item lists, last writer wins (under bootstrap that is bootstrap
+# itself, which runs last).
+
+_json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\t' '  '; }
+_json_array() {
+    local first=1 e
+    printf '['
+    for e in "$@"; do
+        [ "$first" -eq 1 ] || printf ','
+        first=0
+        printf '"%s"' "$(_json_escape "$e")"
+    done
+    printf ']'
+}
+
+_write_summary_json() {
+    {
+        printf '{\n'
+        printf '  "at": "%s",\n' "$(date '+%Y-%m-%dT%H:%M:%S')"
+        printf '  "script": "%s",\n' "$(_json_escape "${RUN_LABEL:-unknown}")"
+        printf '  "macos": "%s",\n' "$(macos_full)"
+        printf '  "profiles": "%s",\n' "$(_json_escape "${PROFILES:-}")"
+        printf '  "counts": {"passed": %d, "skipped": %d, "failed": %d},\n' \
+            "${#PASS[@]}" "${#SKIP[@]}" "${#FAIL[@]}"
+        printf '  "passed": ';   _json_array ${PASS[@]+"${PASS[@]}"};   printf ',\n'
+        printf '  "skipped": ';  _json_array ${SKIP[@]+"${SKIP[@]}"};   printf ',\n'
+        printf '  "failed": ';   _json_array ${FAIL[@]+"${FAIL[@]}"};   printf ',\n'
+        printf '  "notes": ';    _json_array ${NOTE[@]+"${NOTE[@]}"};   printf '\n'
+        printf '}\n'
+    } > "${STATE_DIR}/summary.json"
+}
+
 print_summary() {
+    _write_summary_json
     printf '\n%s────────────── summary ──────────────%s\n' "$_B" "$_0"
     printf 'passed  %d\nskipped %d\nfailed  %d\n' "${#PASS[@]}" "${#SKIP[@]}" "${#FAIL[@]}"
 
@@ -357,8 +393,7 @@ install_verified() {
         fi
         return 0 ;;
     mas)
-        # VMs cannot sign in to an Apple ID, and no headless sign-in path
-        # exists; --no-app-store on bootstrap (or the env var directly)
+        # VMs cannot sign in to an Apple ID, and no headless sign-in path        # exists; --no-app-store on bootstrap (or the env var directly)
         # turns these into deliberate skips instead of brew + guaranteed
         # mas failures.
         if [ "${SETUP_SKIP_APP_STORE:-0}" = "1" ]; then
@@ -396,6 +431,21 @@ install_verified() {
     fi
 
     case "$method" in
+    upkg)
+        # Vendor-official installer package that Apple has not signed
+        # (GitHub CLI). No notarization or Team ID gate is possible, so it
+        # is not pretended: integrity rests on TLS to the vendor's release
+        # URL, the same class as npm/pip/nvm entries. Loudly noted every
+        # time one installs, so it never passes quietly.
+        record_note "${name}: unsigned vendor package — no signature gate applied (integrity: TLS only)"
+        local uerr urc
+        uerr="$(sudo installer -pkg "$file" -target / 2>&1)"; urc=$?
+        _log "INSTALLER-OUT $name: $(printf '%s' "$uerr" | tr '\n' ' ')"
+        if [ $urc -ne 0 ]; then
+            record_fail "$name" "installer failed (rc ${urc}): $(printf '%s' "${uerr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
+            return 1
+        fi
+        ;;
     pkg)
         if ! verify_artifact "$file" install "$team" "$name" >/dev/null; then
             record_fail "$name" "signature verification failed"; return 1
@@ -676,6 +726,10 @@ resolve_profiles() {
         info "using saved profiles: $(cat "$PROFILE_FILE")"
         cat "$PROFILE_FILE"
         return 0
+    fi
+    if [ "${SETUP_UNATTENDED:-0}" = "1" ]; then
+        err "unattended run with no profile selection — pass --profile or set SETUP_PROFILES"
+        return 1
     fi
     if [ ! -t 0 ]; then
         err "no profile selected and stdin is not a terminal"

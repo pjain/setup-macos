@@ -69,7 +69,36 @@ Three outcomes are reported, and the distinction matters:
   should be treated as serious rather than retried blindly.
 
 Anything needing a human is collected under **manual steps still required**
-at the end.
+at the end. The same outcome is written to `summary.json` in the state
+directory — counts and full lists, machine-readable.
+
+### Unattended runs
+
+Everything except three inherently human steps can run hands-off:
+
+    curl -fsSL https://raw.githubusercontent.com/pjain/setup-macos/main/bootstrap.sh | bash -s -- --profile dev,desktop --no-app-store --yes
+
+`--yes` means: never prompt. A missing profile selection is an error rather
+than a question; steps that need a human report as skips and notes instead
+of blocking. Sign in to GitHub without a browser by giving the script a
+token — note the variable goes on the *right* side of the pipe:
+
+    curl -fsSL https://raw.githubusercontent.com/pjain/setup-macos/main/bootstrap.sh | SETUP_GH_TOKEN=ghp_… bash -s -- --profile dev --yes
+
+GitHub CLI itself installs from the manifest (official GitHub release).
+After every run, `${HOME}/.local/state/setup-macos/summary.json` carries
+machine-readable counts and full pass/skip/fail/note lists for the last
+script that ran — suitable for CI, a management system, or a wrapper that
+must decide "clean or not" without parsing color codes.
+
+What still genuinely needs a human, and why:
+
+| Step                              | Why it cannot be automated                |
+|-----------------------------------|-------------------------------------------|
+| The one sudo password             | No credential is ever stored on the machine; a keychain- or FDE-based pre-auth is left as an operator choice |
+| Mac App Store sign-in             | Apple removed scripted sign-in; VMs cannot sign in at all (`mas` era is over) |
+| Full Disk Access for Terminal     | Apple deliberately makes this click-only; it affects one Safari preference |
+| First-launch app onboarding       | Per-vendor GUI consent, outside any API    |
 
 ## Profiles
 
@@ -175,6 +204,12 @@ installed:
 
 1. Gatekeeper must report it as notarized by Apple.
 2. The signing Team ID must equal the value pinned in `manifest.tsv`.
+
+The one acknowledged exception is the `upkg` method: a vendor-official
+installer the vendor itself never signed (GitHub CLI). There is no signature
+to verify, so none is claimed — integrity is TLS to the vendor's release URL
+(the same trust class as the npm/pip/nvm steps), and the exception is
+reported loudly in the summary on every install rather than passing quietly.
 
 A mismatch aborts that item and is reported as a failure. Forging a package
 would require the vendor's own Developer ID certificate.

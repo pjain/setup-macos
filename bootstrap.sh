@@ -13,6 +13,7 @@ set -uo pipefail
 REPO_TARBALL="https://github.com/pjain/setup-macos/archive/refs/heads/main.tar.gz"
 DEST="${HOME}/projects/setup-macos"
 AGENT_LABEL="com.pjain.setup-macos"
+RUN_LABEL="bootstrap"
 AGENT_PLIST="${HOME}/Library/LaunchAgents/${AGENT_LABEL}.plist"
 
 # ------------------------------------------------------------- locate -----
@@ -166,13 +167,27 @@ phase_shell() {
 }
 
 phase_github() {
+    local token="${SETUP_GH_TOKEN:-${GITHUB_TOKEN:-}}"
     if ! command -v gh >/dev/null 2>&1; then
         record_skip "GitHub CLI" "gh not installed"
-        record_note "Install gh, then re-run bootstrap.sh to finish SSH key setup"
+        record_note "Add a profile providing GitHub CLI to the manifest run, or install gh, then re-run bootstrap.sh"
         return 0
     fi
     if gh auth status >/dev/null 2>&1; then
         record_skip "GitHub auth" "already signed in"
+    elif [ -n "$token" ]; then
+        # Token path: no browser, works headless. The token is never logged;
+        # only its acceptance is recorded.
+        if printf '%s' "$token" | gh auth login --hostname github.com --git-protocol ssh --with-token >/dev/null 2>&1; then
+            record_pass "GitHub auth (token)"
+        else
+            record_fail "GitHub auth" "gh rejected SETUP_GH_TOKEN (expired or insufficient scopes?)"
+            return 1
+        fi
+    elif [ "${SETUP_UNATTENDED:-0}" = "1" ]; then
+        record_skip "GitHub auth" "unattended run without SETUP_GH_TOKEN"
+        record_note "Re-run with SETUP_GH_TOKEN set, or run bootstrap.sh interactively to sign in via browser"
+        return 0
     else
         info "Signing in to GitHub (a browser will open)"
         gh auth login --hostname github.com --git-protocol ssh --web || {
@@ -225,10 +240,14 @@ main() {
             --profile|--profiles)   PROFILES="${2:-}"; shift 2 ;;
             --profile=*|--profiles=*) PROFILES="${1#*=}"; shift ;;
             --no-app-store) export SETUP_SKIP_APP_STORE=1; shift ;;
+            --yes|-y) export SETUP_UNATTENDED=1; shift ;;
             --help|-h)
-                printf 'Usage: bootstrap.sh [--profile dev,ai,desktop] [--no-app-store] [--status] [--reset]\n'
+                printf 'Usage: bootstrap.sh [--profile dev,ai,desktop] [--no-app-store] [--yes] [--status] [--reset]\n'
                 printf '  --no-app-store  skip Mac App Store titles entirely (VMs cannot sign in);\n'
-                printf '                  they report as skips, and Homebrew is never installed\n'; exit 0 ;;
+                printf '                  they report as skips, and Homebrew is never installed\n'
+                printf '  --yes           unattended: no prompts ever. Needs --profile (or a saved\n'
+                printf '                  selection) and SETUP_GH_TOKEN for the GitHub phase;\n'
+                printf '                  steps needing a human report as skips and notes\n'; exit 0 ;;
             *) err "unknown option: $1"; exit 1 ;;
         esac
     done

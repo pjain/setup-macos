@@ -5,6 +5,7 @@
 
 set -uo pipefail
 SETUP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_LABEL="$(basename "$0" .sh)"
 # shellcheck source=lib/common.sh
 source "${SETUP_ROOT}/lib/common.sh"
 # shellcheck source=lib/resolve.sh
@@ -46,7 +47,7 @@ install_from_manifest() {
 
         # Resolve a source spec (github:, page:, ...) to a concrete URL.
         # Pinned http URLs and non-download methods pass straight through.
-        case "$method" in dmg|dmgpkg|zip|pkg)
+        case "$method" in dmg|dmgpkg|zip|pkg|upkg)
             case "$url" in
             http://*|https://*) : ;;
             *)
@@ -262,6 +263,7 @@ main() {
         case "$1" in
             --profile|--profiles)   PROFILES="${2:-}"; shift 2 ;;
             --profile=*|--profiles=*) PROFILES="${1#*=}"; shift ;;
+            --yes|-y)               export SETUP_UNATTENDED=1; shift ;;
             --list-profiles) list_profiles; exit 0 ;;
             --help|-h)  usage; exit 0 ;;
             *) err "unknown option: $1"; usage; exit 1 ;;

@@ -15,6 +15,7 @@
 
 set -uo pipefail
 SETUP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_LABEL="$(basename "$0" .sh)"
 # shellcheck source=lib/common.sh
 source "${SETUP_ROOT}/lib/common.sh"
 # shellcheck source=lib/resolve.sh
@@ -96,7 +97,7 @@ update_from_manifest() {
         case "$name" in ''|\#*) continue ;; esac
         profile_matches "$profiles" "$PROFILES" || continue
         case "$method" in
-            dmg|dmgpkg|zip|pkg) : ;;
+            dmg|dmgpkg|zip|pkg|upkg) : ;;
             mas) record_note "${name}: App Store — run 'mas upgrade'"; continue ;;
             npm) record_note "${name}: run 'npm update -g ${dest}'"; continue ;;
             pip) record_note "${name}: run 'python3 -m pip install -U ${dest}'"; continue ;;
@@ -133,6 +134,7 @@ main() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --check)          CHECK_ONLY=1; shift ;;
+            --yes|-y)         export SETUP_UNATTENDED=1; shift ;;
             --profile|--profiles)     PROFILES="${2:-}"; shift 2 ;;
             --profile=*|--profiles=*) PROFILES="${1#*=}"; shift ;;
             --help|-h)        usage; exit 0 ;;
