@@ -286,6 +286,14 @@ install_verified() {
         fi
         return 0 ;;
     mas)
+        # VMs cannot sign in to an Apple ID, and no headless sign-in path
+        # exists; --no-app-store on bootstrap (or the env var directly)
+        # turns these into deliberate skips instead of brew + guaranteed
+        # mas failures.
+        if [ "${SETUP_SKIP_APP_STORE:-0}" = "1" ]; then
+            record_skip "$name" "App Store installs disabled (SETUP_SKIP_APP_STORE)"
+            return 0
+        fi
         # App Store titles cannot be fetched from a vendor URL, and mas is a
         # Homebrew formula that this repo deliberately does not depend on.
         if [ "${SETUP_DRY_RUN:-0}" = "1" ]; then

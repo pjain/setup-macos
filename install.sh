@@ -140,6 +140,10 @@ install_homebrew() {
 }
 
 ensure_mas() {
+    if [ "${SETUP_SKIP_APP_STORE:-0}" = "1" ]; then
+        record_skip "Homebrew + mas" "App Store disabled (SETUP_SKIP_APP_STORE)"
+        return 0
+    fi
     if command -v mas >/dev/null 2>&1; then
         record_skip "mas" "already installed"
         return 0

@@ -120,11 +120,18 @@ Apple backend works well.
 Share this directory into the guest (VM settings → Sharing → Add the folder;
 requires a macOS 13+ guest, and it then appears under `/Volumes/` inside),
 or skip sharing and let bootstrap fetch the repo from GitHub itself.
-Either way, inside the VM:
+Either way, the one command inside the VM is:
 
-    curl -fsSL https://raw.githubusercontent.com/pjain/setup-macos/main/bootstrap.sh | bash -s -- --profile dev
-    # ...or, with the folder shared:
-    cp -R "/Volumes/<shared folder>" ~/projects/setup-macos && cd ~/projects/setup-macos && ./bootstrap.sh
+    curl -fsSL https://raw.githubusercontent.com/pjain/setup-macos/main/bootstrap.sh | bash -s -- --profile dev,desktop --no-app-store
+
+(App Store apps are skipped there anyway: VMs cannot sign in to an Apple ID,
+and no headless sign-in exists. `--no-app-store` makes that a clean skip and
+keeps Homebrew off the VM. `--profile` selects whichever set you're testing.)
+
+With a shared folder, you can instead run the local copy identically:
+
+    cp -R "/Volumes/<shared folder>" ~/projects/setup-macos && cd ~/projects/setup-macos
+    ./bootstrap.sh --profile dev,desktop --no-app-store
 
 The Apple backend has no snapshots, so clone the VM bundle between runs
 instead. On APFS this is copy-on-write and costs no extra space until the

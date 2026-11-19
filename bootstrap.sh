@@ -224,8 +224,11 @@ main() {
                 exit 0 ;;
             --profile|--profiles)   PROFILES="${2:-}"; shift 2 ;;
             --profile=*|--profiles=*) PROFILES="${1#*=}"; shift ;;
+            --no-app-store) export SETUP_SKIP_APP_STORE=1; shift ;;
             --help|-h)
-                printf 'Usage: bootstrap.sh [--profile dev,ai,desktop] [--status] [--reset]\n'; exit 0 ;;
+                printf 'Usage: bootstrap.sh [--profile dev,ai,desktop] [--no-app-store] [--status] [--reset]\n'
+                printf '  --no-app-store  skip Mac App Store titles entirely (VMs cannot sign in);\n'
+                printf '                  they report as skips, and Homebrew is never installed\n'; exit 0 ;;
             *) err "unknown option: $1"; exit 1 ;;
         esac
     done
