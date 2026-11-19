@@ -218,6 +218,26 @@ is_mounted() {
     [ "$dev_d" != "$dev_p" ]
 }
 
+# bundle_sane <dest> — an installed application must be a *complete*
+# application: readable Info.plist naming its executable, and that binary
+# present. Existence alone lies — a ditto interrupted by disk pressure or a
+# killed run leaves partial bundles that a later pass would otherwise
+# report as "already installed". Non-bundle destinations (framework dirs,
+# /opt/miniconda3) can only be checked for existence.
+bundle_sane() {
+    local dest="$1" plist exe
+    case "$dest" in
+    *.app)
+        plist="${dest%/}/Contents/Info.plist"
+        [ -f "$plist" ] || return 1
+        plutil -lint "$plist" >/dev/null 2>&1 || return 1
+        exe="$(plutil -extract CFBundleExecutable raw "$plist" 2>/dev/null)"
+        [ -n "$exe" ] && [ -x "${dest%/}/Contents/MacOS/${exe}" ]
+        ;;
+    *) [ -e "$dest" ] ;;
+    esac
+}
+
 # =========================================================================
 # install_verified <name> <method> <dest> <team_id> <url>
 #   method: pkg | dmg | zip
@@ -239,7 +259,16 @@ install_verified() {
         fi ;;
     *)
         if [ -e "$dest" ]; then
-            record_skip "$name" "already installed"; return 0
+            if bundle_sane "$dest"; then
+                record_skip "$name" "already installed"; return 0
+            fi
+            # Partial bundle from an interrupted earlier run: only .app
+            # bundles are safe to delete; other destinations (frameworks,
+            # package roots) are left in place and re-run through anyway.
+            record_note "${name}: ${dest} exists but is incomplete — replacing"
+            case "$dest" in
+                *.app) rm -rf "${dest:?}" ;;
+            esac
         fi ;;
     esac
 
@@ -329,9 +358,11 @@ install_verified() {
         if ! verify_artifact "$file" install "$team" >/dev/null; then
             record_fail "$name" "signature verification failed"; return 1
         fi
-        if ! sudo installer -pkg "$file" -target / >/dev/null 2>&1; then
-            record_fail "$name" "installer failed"; return 1
-        fi
+        local ierr
+        ierr="$(sudo installer -pkg "$file" -target / 2>&1 >/dev/null)" || {
+            _log "INSTALLER-ERR $name: $ierr"
+            record_fail "$name" "installer failed: $(printf '%s' "${ierr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
+            return 1; }
         ;;
     dmg|zip)
         mnt="${tmp}/mnt"; mkdir -p "$mnt"
@@ -391,10 +422,12 @@ install_verified() {
             hdiutil detach "$mnt" -quiet 2>/dev/null
             record_fail "$name" "signature verification failed"; return 1
         fi
-        if ! sudo installer -pkg "$pkg" -target / >/dev/null 2>&1; then
+        local perr
+        perr="$(sudo installer -pkg "$pkg" -target / 2>&1 >/dev/null)" || {
             hdiutil detach "$mnt" -quiet 2>/dev/null
-            record_fail "$name" "installer failed"; return 1
-        fi
+            _log "INSTALLER-ERR $name: $perr"
+            record_fail "$name" "installer failed: $(printf '%s' "${perr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
+            return 1; }
         hdiutil detach "$mnt" -quiet 2>/dev/null
         ;;
     manual)
@@ -407,7 +440,19 @@ install_verified() {
         record_fail "$name" "unknown install method '${method}'"; return 1 ;;
     esac
 
-    record_pass "$name"
+    # Confirmation, not assertion: the summary may only claim an install if
+    # the artifact is genuinely in place and complete, with the installed
+    # version as evidence. Anything else is reported as a failure even if
+    # every command above succeeded.
+    local cver
+    cver="$(installed_version "$dest" 2>/dev/null)" || true
+    [ "${cver:-unknown}" = "unknown" ] && cver=""
+    if bundle_sane "$dest"; then
+        record_pass "${name}${cver:+ $cver}"
+    else
+        record_fail "$name" "post-install check: ${dest} missing or incomplete after install"
+        return 1
+    fi
 }
 
 # =========================================================================
