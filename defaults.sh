@@ -192,8 +192,21 @@ touchid_sudo() {
     # machines at all.
     model="$(sysctl -n hw.model 2>/dev/null)"
     case "$model" in
-        *[Vv]irtual*) record_skip "Touch ID for sudo" "virtual machine (${model}) has no biometrics"
-                      return 0 ;;
+        *[Vv]irtual*)
+            # Never enable here — and if an earlier run did (before this
+            # guard existed), undo it: a pam_tid line on a machine with no
+            # biometrics is a PAM path that can only fail.
+            if [ -f "$f" ] && grep -q '^auth.*pam_tid\.so' "$f"; then
+                if sudo sed -i '' 's/^auth\(.*pam_tid\.so\)/#auth\1/' "$f" &&
+                   ! grep -q '^auth.*pam_tid\.so' "$f"; then
+                    record_pass "Touch ID sudo disabled on VM (was enabled by an earlier run)"
+                else
+                    record_fail "Touch ID sudo" "could not disable pam_tid on ${model}"
+                fi
+            else
+                record_skip "Touch ID for sudo" "virtual machine (${model}) has no biometrics"
+            fi
+            return 0 ;;
     esac
     if [ -f "$f" ] && grep -q '^auth.*pam_tid\.so' "$f"; then
         record_skip "Touch ID for sudo" "already configured"
