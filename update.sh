@@ -142,6 +142,7 @@ main() {
     [ "${SETUP_DRY_RUN:-0}" = "1" ] && CHECK_ONLY=1
 
     info "setup-macos — update (macOS $(macos_full))"
+    acquire_run_lock || exit 1
     check_macos_version || exit 1
     PROFILES="$(resolve_profiles "$PROFILES")" || exit 1
     validate_profiles "$PROFILES" || exit 1

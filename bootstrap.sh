@@ -241,6 +241,7 @@ main() {
     printf '%s' "$PROFILES" > "${STATE_DIR}/profiles"
 
     info "setup-macos on macOS $(macos_full)"
+    acquire_run_lock || exit 1
     check_macos_version || exit 1
     require_sudo || { err "sudo required"; exit 1; }
     install_resume_agent

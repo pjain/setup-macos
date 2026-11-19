@@ -183,8 +183,18 @@ firewall_prefs() {
 }
 
 touchid_sudo() {
-    local f=/etc/pam.d/sudo_local
+    local f=/etc/pam.d/sudo_local model
     [ "${SETUP_DRY_RUN:-0}" = "1" ] && { record_skip "Touch ID for sudo" "dry run"; return 0; }
+    # Virtual machines (hw.model reports *Virtual*, e.g. VirtualMac2,1)
+    # have no Secure Enclave biometrics. Enabling pam_tid there was
+    # suspected in the VM run where every subsequent sudo installer failed
+    # — a PAM line that can never succeed should not be written on such
+    # machines at all.
+    model="$(sysctl -n hw.model 2>/dev/null)"
+    case "$model" in
+        *[Vv]irtual*) record_skip "Touch ID for sudo" "virtual machine (${model}) has no biometrics"
+                      return 0 ;;
+    esac
     if [ -f "$f" ] && grep -q '^auth.*pam_tid\.so' "$f"; then
         record_skip "Touch ID for sudo" "already configured"
         return 0
@@ -214,6 +224,7 @@ main() {
     done
 
     info "setup-macos — defaults (macOS $(macos_full))"
+    acquire_run_lock || exit 1
     check_macos_version || exit 1
     PROFILES="$(resolve_profiles "$PROFILES")" || exit 1
     validate_profiles "$PROFILES" || exit 1

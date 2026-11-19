@@ -37,10 +37,10 @@ Inkscape	dev,desktop	manual	/Applications/Inkscape.app	SW3D6BB6A6	https://inksca
 GIMP	dev,desktop	dmg	/Applications/GIMP.app	T25BQ8HSJF	page:https://download.gimp.org/gimp/v3.2/macos/|^gimp-[0-9][0-9.]*-arm64\.dmg$
 Slack	dev,desktop	dmg	/Applications/Slack.app	BQR82RBBHL	https://slack.com/ssb/download-osx-universal
 Zoom	dev,desktop	pkg	/Applications/zoom.us.app	BJ4HAAB9B3	https://zoom.us/client/latest/zoomusInstallerFull.pkg?archType=arm64
-Python 3.14	dev	pkg	/Library/Frameworks/Python.framework/Versions/3.14	-	https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg
+Python 3.14	dev	pkg	/Library/Frameworks/Python.framework/Versions/3.14	BMM5U3QVKW	https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg
 Xcode	dev	mas	/Applications/Xcode.app	59GAB85EFG	497799835
-Postgres.app	dev	dmg	/Applications/Postgres.app	-	github:PostgresApp/PostgresApp|^Postgres-[0-9][0-9.]*(-[0-9]+){2,}\.dmg$
-Miniconda	dev	pkg	/opt/miniconda3	-	https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.pkg
+Postgres.app	dev	dmg	/Applications/Postgres.app	ZF84SJ5A3G	github:PostgresApp/PostgresApp|^Postgres-[0-9][0-9.]*(-[0-9]+){2,}\.dmg$
+Miniconda	dev	pkg	/opt/miniconda3	Z5788K4JT7	https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.pkg
 oMLX	ai	manual	/Applications/oMLX.app	PSK5Q5T46L	https://omlx.ai
 LM Studio	ai	dmg	/Applications/LM Studio.app	-	https://installers.lmstudio.ai/darwin/arm64/0.4.23-1/LM-Studio-0.4.23-1-arm64.dmg
 Tailscale	ai,desktop	pkg	/Applications/Tailscale.app	W5364U7YZB	https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg

@@ -269,6 +269,7 @@ main() {
     done
 
     info "setup-macos — install (macOS $(macos_full))"
+    acquire_run_lock || exit 1
     check_macos_version || exit 1
     PROFILES="$(resolve_profiles "$PROFILES")" || exit 1
     validate_profiles "$PROFILES" || exit 1

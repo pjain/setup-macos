@@ -80,6 +80,36 @@ phase_done()     { grep -qxF "$1" "$STATE_FILE" 2>/dev/null; }
 mark_phase_done(){ phase_done "$1" || echo "$1" >> "$STATE_FILE"; }
 reset_state()    { rm -f "$STATE_FILE"; }
 
+# ----------------------------------------------------------------- lock ----
+# One run at a time. The log evidence: a manual install.sh and the resume
+# agent's bootstrap running interleaved, each with its own sudo timestamp
+# keeper — installs failing with nothing to explain them. The lock is a
+# directory; its owner pid decides live vs stale. Child scripts launched by
+# bootstrap inherit SETUP_LOCK_HELD instead of deadlocking on their parent.
+
+RUN_LOCK="${STATE_DIR}/run.lock"
+acquire_run_lock() {
+    local owner pid rest
+    [ "${SETUP_LOCK_HELD:-}" = 1 ] && return 0   # child of a locked parent
+    owner="$(basename "${BASH_SOURCE[1]:-$0}")"
+    if ! mkdir "$RUN_LOCK" 2>/dev/null; then
+        read -r pid rest < "${RUN_LOCK}/owner" 2>/dev/null || true
+        if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
+            err "another setup-macos run is in progress (pid ${pid}${rest:+: $rest})"
+            err "wait for it to finish, or remove ${RUN_LOCK} if that process is gone"
+            return 1
+        fi
+        warn "stale lock from pid ${pid:-unknown}; taking over"
+        rm -rf "$RUN_LOCK"
+        mkdir "$RUN_LOCK" || return 1
+    fi
+    printf '%s %s\n' "$$" "$owner" > "${RUN_LOCK}/owner"
+    export SETUP_LOCK_HELD=1
+    # rm -rf, not rmdir: the directory holds the owner file and would
+    # otherwise never be removable, leaving a stale lock after every run.
+    trap 'rm -rf "${RUN_LOCK}"' EXIT INT TERM
+}
+
 # -------------------------------------------------------------- macOS ----
 
 macos_major() { sw_vers -productVersion | cut -d. -f1; }
@@ -149,14 +179,16 @@ sig_notarized() {
     printf '%s' "$out" | grep -q 'source=Notarized Developer ID'
 }
 
-# verify_artifact <path> <exec|install> <expected_team|->
+# verify_artifact <path> <exec|install> <expected_team|-> [label]
 # Prints the observed Team ID on success. Empty pin ("-") still requires
 # notarization but cannot detect a vendor swap, so it is reported loudly.
+# The optional label names the manifest entry; without it packages show up
+# under their temp-dir name ("download"), which helped nobody reading a log.
 verify_artifact() {
-    local path="$1" kind="$2" want="$3" got
+    local path="$1" kind="$2" want="$3" label="${4:-$(basename "$1")}" got
 
     if ! sig_notarized "$path" "$kind"; then
-        err "notarization check FAILED for $(basename "$path")"
+        err "notarization check FAILED for ${label}"
         err "  $(spctl -a -vv -t "$kind" "$path" 2>&1 | head -2 | tr '\n' ' ')"
         return 1
     fi
@@ -164,18 +196,18 @@ verify_artifact() {
     if [ "$kind" = install ]; then got="$(sig_team_pkg "$path")"; else got="$(sig_team_app "$path")"; fi
 
     if [ -z "$got" ]; then
-        err "could not read Team ID from $(basename "$path")"
+        err "could not read Team ID from ${label}"
         return 1
     fi
 
     if [ "$want" = "-" ] || [ -z "$want" ]; then
-        warn "Team ID not pinned for $(basename "$path") — observed ${got}"
-        record_note "Pin Team ID ${got} for $(basename "$path") in manifest.tsv"
+        warn "Team ID not pinned for ${label} — observed ${got}"
+        record_note "Pin Team ID ${got} for ${label} in manifest.tsv"
         printf '%s' "$got"; return 0
     fi
 
     if [ "$got" != "$want" ]; then
-        err "Team ID MISMATCH for $(basename "$path"): expected ${want}, got ${got}"
+        err "Team ID MISMATCH for ${label}: expected ${want}, got ${got}"
         err "  refusing to install — this may indicate a compromised download"
         return 1
     fi
@@ -355,14 +387,18 @@ install_verified() {
 
     case "$method" in
     pkg)
-        if ! verify_artifact "$file" install "$team" >/dev/null; then
+        if ! verify_artifact "$file" install "$team" "$name" >/dev/null; then
             record_fail "$name" "signature verification failed"; return 1
         fi
-        local ierr
-        ierr="$(sudo installer -pkg "$file" -target / 2>&1 >/dev/null)" || {
-            _log "INSTALLER-ERR $name: $ierr"
-            record_fail "$name" "installer failed: $(printf '%s' "${ierr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
-            return 1; }
+        local ierr rc
+        # installer reports progress AND errors on stdout — both must be
+        # captured, or failures arrive with nothing to show.
+        ierr="$(sudo installer -pkg "$file" -target / 2>&1)"; rc=$?
+        _log "INSTALLER-OUT $name: $(printf '%s' "$ierr" | tr '\n' ' ')"
+        if [ $rc -ne 0 ]; then
+            record_fail "$name" "installer failed (rc ${rc}): $(printf '%s' "${ierr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
+            return 1
+        fi
         ;;
     dmg|zip)
         mnt="${tmp}/mnt"; mkdir -p "$mnt"
@@ -391,7 +427,7 @@ install_verified() {
             record_fail "$name" "no .app found in archive"; return 1
         fi
 
-        if ! verify_artifact "$app" exec "$team" >/dev/null; then
+        if ! verify_artifact "$app" exec "$team" "$name" >/dev/null; then
             [ "$method" = dmg ] && hdiutil detach "$mnt" -quiet 2>/dev/null
             record_fail "$name" "signature verification failed"; return 1
         fi
@@ -418,17 +454,18 @@ install_verified() {
             hdiutil detach "$mnt" -quiet 2>/dev/null
             record_fail "$name" "no .pkg found in disk image"; return 1
         fi
-        if ! verify_artifact "$pkg" install "$team" >/dev/null; then
+        if ! verify_artifact "$pkg" install "$team" "$name" >/dev/null; then
             hdiutil detach "$mnt" -quiet 2>/dev/null
             record_fail "$name" "signature verification failed"; return 1
         fi
-        local perr
-        perr="$(sudo installer -pkg "$pkg" -target / 2>&1 >/dev/null)" || {
-            hdiutil detach "$mnt" -quiet 2>/dev/null
-            _log "INSTALLER-ERR $name: $perr"
-            record_fail "$name" "installer failed: $(printf '%s' "${perr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
-            return 1; }
+        local perr prc
+        perr="$(sudo installer -pkg "$pkg" -target / 2>&1)"; prc=$?
         hdiutil detach "$mnt" -quiet 2>/dev/null
+        _log "INSTALLER-OUT $name: $(printf '%s' "$perr" | tr '\n' ' ')"
+        if [ $prc -ne 0 ]; then
+            record_fail "$name" "installer failed (rc ${prc}): $(printf '%s' "${perr:-no output from installer}" | tr '\n' ' ' | tail -c 200)"
+            return 1
+        fi
         ;;
     manual)
         # No scriptable download exists. Reported rather than silently dropped.
