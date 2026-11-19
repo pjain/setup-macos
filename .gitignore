@@ -11,3 +11,5 @@ docs/specs/
 # OS version in the name.
 prefs-audit.tsv
 curl.sh
+output.txt
+summary.txt
