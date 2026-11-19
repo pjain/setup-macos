@@ -10,3 +10,4 @@ docs/specs/
 # Stray audit copies — committed baselines live under matrix/ with the
 # OS version in the name.
 prefs-audit.tsv
+curl.sh
